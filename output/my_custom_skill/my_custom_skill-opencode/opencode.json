@@ -1,0 +1,14 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "skill": {
+    "name": "my_custom_skill",
+    "version": "1.0.0",
+    "description": "基于文档蒸馏生成的OpenCode Skill：my_custom_skill"
+  },
+  "permission": {
+    "skill": {
+      "my_custom_skill": "allow",
+      "*": "ask"
+    }
+  }
+}
