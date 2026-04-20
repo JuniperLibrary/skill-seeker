@@ -19,6 +19,66 @@
 | **YouTube字幕** | yt-dlp | 直接获取字幕 |
 | **内容增强** | LLM | AI summarization和结构化 |
 
+## 推荐的大模型
+
+### 1. 视频转文字（语音识别）
+
+| 模型 | 推荐度 | 说明 |
+|------|--------|------|
+| **OpenAI Whisper** | ⭐⭐⭐⭐⭐ | 免费、本地运行、支持中文、多语言 |
+| **Whisper-large-v3** | ⭐⭐⭐⭐⭐ | 精度最高，需要GPU，中文识别好 |
+| **FunAudioLLM** (阿里) | ⭐⭐⭐⭐ | 支持多语言、实时字幕 |
+| **SenseVoice** (阿里) | ⭐⭐⭐⭐ | 开源、效果不错 |
+
+### 2. 视频理解/摘要
+
+| 模型 | 推荐度 | 说明 |
+|------|--------|------|
+| **Gemini 1.5 Pro** | ⭐⭐⭐⭐⭐ | 100万token上下文，可直接分析长视频URL |
+| **GPT-4V** | ⭐⭐⭐⭐ | 视频理解能力强 |
+| **Claude 3.5** | ⭐⭐⭐⭐ | 视频理解能力优秀 |
+
+### 3. 推荐组合方案
+
+**方案一：免费本地方案**（推荐）
+```bash
+# 转写 + 摘要
+pip install openai-whisper
+whisper video.mp4 --model large-v3 --language Chinese
+
+# 使用免费的LLM进行摘要
+# 智谱GLM、DeepSeek等都支持
+```
+
+**方案二：高精度方案**
+```bash
+# Whisper-large-v3 (转写) + GPT-4V (摘要)
+whisper video.mp4 --model large-v3
+# 然后调用GPT-4V进行内容理解
+```
+
+**方案三：长视频方案**
+```bash
+# Gemini 1.5 Pro - 原生支持视频URL
+# 直接传入YouTube URL即可分析
+```
+
+### 4. 本地部署
+
+```bash
+# 安装 Whisper
+pip install openai-whisper
+
+# 基础模型（快，准确度一般）
+whisper video.mp4 --model base --language Chinese
+
+# 大模型（慢，准确度高）
+whisper video.mp4 --model large-v3 --language Chinese
+
+# 指定设备
+whisper video.mp4 --device cuda
+```
+
 ## 支持的视频源
 
 1. **本地视频**：MP4, MOV, AVI, MKV, WebM
