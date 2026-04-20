@@ -14,7 +14,8 @@ class SkillDistiller:
     def __init__(self, output_root: Path, env_config: Dict = None):
         self.output_root = output_root
         self.env_config = env_config or {}
-        self.cwd = "/Users/dingchuan/Documents/Repos/skill-seeker"
+        from config.paths import WORK_DIR
+        self.cwd = WORK_DIR
 
     def create_skill(
         self,

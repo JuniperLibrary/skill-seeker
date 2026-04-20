@@ -1,7 +1,8 @@
 import streamlit as st
 from pathlib import Path
 
-from config.models import PROVIDERS, MODEL_CONFIG, TARGET_PLATFORMS, PRESETS, OUTPUT_ROOT
+from config.models import PROVIDERS, MODEL_CONFIG, TARGET_PLATFORMS, PRESETS
+from config.paths import OUTPUT_ROOT, WORK_DIR
 from config.settings import APP_TITLE, APP_SUBTITLE, SUPPORTED_FILE_TYPES, DEFAULT_SKILL_NAME
 from utils.file_utils import save_uploaded_file, get_file_size_mb
 from utils.helpers import mask_content, generate_skill_name
@@ -213,7 +214,7 @@ with tab_new:
                             capture_output=True,
                             text=True,
                             check=True,
-                            cwd="/Users/dingchuan/Documents/Repos/skill-seeker",
+                            cwd=WORK_DIR,
                             env=run_env
                         )
                         safe_stdout = mask_content(result.stdout, api_key, api_secret)

@@ -69,5 +69,3 @@ PRESETS = {
     "standard": "standard (5-10分钟)",
     "comprehensive": "comprehensive (20-60分钟)"
 }
-
-OUTPUT_ROOT = "/Users/dingchuan/Documents/Repos/skill-seeker/output"
