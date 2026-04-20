@@ -171,90 +171,199 @@ with tab_new:
                 st.warning(f"请输入{api_provider}的API Key")
 
         st.divider()
-        st.subheader("🚀 开始蒸馏")
+        st.subheader("🔍 预览与执行")
 
-        if st.button("开始执行Skill蒸馏", type="primary", use_container_width=True):
-            import subprocess
-            import tempfile
+        if 'preview_done' not in st.session_state:
+            st.session_state['preview_done'] = False
+        if 'preview_content' not in st.session_state:
+            st.session_state['preview_content'] = {}
+        if 'execute_confirmed' not in st.session_state:
+            st.session_state['execute_confirmed'] = False
 
-            results = []
-            progress_bar = st.progress(0)
+        col_preview, col_execute = st.columns([1, 1])
 
-            for idx, uploaded_file in enumerate(uploaded_files):
-                progress_bar.progress(idx / len(uploaded_files))
-                st.markdown(f"### 处理 [{idx + 1}/{len(uploaded_files)}]：{uploaded_file.name}")
+        with col_preview:
+            preview_disabled = not uploaded_files or st.session_state.get('preview_done', False)
+            if st.button("🔍 预览", disabled=preview_disabled, use_container_width=True):
+                import subprocess
+                import tempfile
 
-                current_skill_name = generate_skill_name(uploaded_file.name)
+                st.session_state['preview_content'] = {}
+                preview_progress = st.progress(0)
 
-                with tempfile.TemporaryDirectory() as temp_dir:
-                    temp_path = Path(temp_dir) / uploaded_file.name
-                    with open(temp_path, "wb") as f:
-                        f.write(uploaded_file.getbuffer())
+                for idx, uploaded_file in enumerate(uploaded_files):
+                    preview_progress.progress((idx + 1) / len(uploaded_files) * 0.5)
+                    current_skill_name = generate_skill_name(uploaded_file.name)
 
-                    cmd = [
-                        "skill-seekers", "create",
-                        str(temp_path),
-                        "--name", current_skill_name,
-                        "--preset", preset_value,
-                        "--enhance-level", str(enhance_level),
-                        "--output", str(output_root / current_skill_name)
-                    ]
-                    if use_ocr:
-                        cmd.append("--ocr")
-                    if password:
-                        cmd.extend(["--password", password])
+                    preview_output_dir = output_root / f"{current_skill_name}_preview"
 
-                    import os
-                    run_env = os.environ.copy()
-                    run_env.update(env_config)
+                    with tempfile.TemporaryDirectory() as temp_dir:
+                        temp_path = Path(temp_dir) / uploaded_file.name
+                        with open(temp_path, "wb") as f:
+                            f.write(uploaded_file.getbuffer())
 
-                    try:
-                        result = subprocess.run(
-                            cmd,
-                            capture_output=True,
-                            text=True,
-                            check=True,
-                            cwd=WORK_DIR,
-                            env=run_env
-                        )
-                        safe_stdout = mask_content(result.stdout, api_key, api_secret)
-                        safe_stderr = mask_content(result.stderr, api_key, api_secret)
+                        cmd = [
+                            "skill-seekers", "create",
+                            str(temp_path),
+                            "--name", current_skill_name,
+                            "--preset", preset_value,
+                            "--enhance-level", "0",
+                            "--output", str(preview_output_dir)
+                        ]
+                        if use_ocr:
+                            cmd.append("--ocr")
+                        if password:
+                            cmd.extend(["--password", password])
 
-                        results.append({
-                            "name": current_skill_name,
-                            "status": "success",
-                            "output": output_root / current_skill_name
-                        })
-                        st.success(f"✅ {uploaded_file.name} 完成")
-                    except subprocess.CalledProcessError as e:
-                        results.append({
-                            "name": current_skill_name,
-                            "status": "error",
-                            "error": e.stderr
-                        })
-                        st.error(f"❌ {uploaded_file.name} 失败")
+                        import os
+                        run_env = os.environ.copy()
 
-            progress_bar.progress(1.0)
-            st.markdown("---")
+                        try:
+                            subprocess.run(
+                                cmd,
+                                capture_output=True,
+                                text=True,
+                                check=True,
+                                cwd=WORK_DIR,
+                                env=run_env
+                            )
 
-            if results:
-                success_count = sum(1 for r in results if r["status"] == "success")
-                st.success(f"🎉 完成！成功 {success_count}/{len(results)} 个")
+                            skill_md_path = preview_output_dir / "SKILL.md"
+                            if skill_md_path.exists():
+                                content = skill_md_path.read_text(encoding='utf-8')
+                                st.session_state['preview_content'][current_skill_name] = {
+                                    'content': content,
+                                    'path': preview_output_dir
+                                }
+                                st.session_state['preview_done'] = True
+                            st.session_state['preview_confirmed'] = None
+                        except subprocess.CalledProcessError:
+                            st.error(f"预览失败: {uploaded_file.name}")
 
-                if success_count > 0:
-                    st.subheader("📥 下载")
-                    cols = st.columns(min(3, success_count))
-                    for i, result in enumerate(results):
-                        if result["status"] == "success":
-                            zf = list(result["output"].glob("*.zip"))
-                            if zf:
-                                with open(zf[0], "rb") as f:
-                                    with cols[i % 3]:
-                                        st.download_button(
-                                            label=f"📥 {result['name']}",
-                                            data=f,
-                                            file_name=zf[0].name
-                                        )
+                preview_progress.progress(1.0)
+
+        with col_execute:
+            if st.session_state.get('preview_done', False):
+                if st.button("🚀 确认执行", type="primary", use_container_width=True):
+                    st.session_state['execute_confirmed'] = True
+            elif not uploaded_files:
+                st.info("上传文件后预览")
+            else:
+                st.info("请先预览")
+
+        if st.session_state.get('preview_done', False):
+            st.divider()
+            st.subheader("📋 预览大纲")
+
+            for skill_name, preview_data in st.session_state['preview_content'].items():
+                content = preview_data['content']
+                lines = content.split('\n')
+                display_lines = []
+                in_frontmatter = False
+
+                for line in lines:
+                    if line.strip() == '---':
+                        if not in_frontmatter:
+                            in_frontmatter = True
+                        else:
+                            in_frontmatter = False
+                        continue
+                    if in_frontmatter:
+                        continue
+                    if line.startswith('# '):
+                        display_lines.append(f"### {line[2:]}")
+                    elif line.startswith('## '):
+                        display_lines.append(f"**{line[3:]}**")
+                    elif line.startswith('### '):
+                        display_lines.append(f"- {line[4:]}")
+
+                preview_summary = '\n'.join(display_lines[:50])
+                with st.expander(f"📄 {skill_name} 预览", expanded=True):
+                    st.markdown(preview_summary)
+
+            if st.session_state.get('execute_confirmed', False):
+
+                import subprocess
+                import tempfile
+
+                results = []
+                progress_bar = st.progress(0)
+
+                for idx, uploaded_file in enumerate(uploaded_files):
+                    progress_bar.progress(idx / len(uploaded_files))
+                    st.markdown(f"### 处理 [{idx + 1}/{len(uploaded_files)}]：{uploaded_file.name}")
+
+                    current_skill_name = generate_skill_name(uploaded_file.name)
+
+                    with tempfile.TemporaryDirectory() as temp_dir:
+                        temp_path = Path(temp_dir) / uploaded_file.name
+                        with open(temp_path, "wb") as f:
+                            f.write(uploaded_file.getbuffer())
+
+                        cmd = [
+                            "skill-seekers", "create",
+                            str(temp_path),
+                            "--name", current_skill_name,
+                            "--preset", preset_value,
+                            "--enhance-level", str(enhance_level),
+                            "--output", str(output_root / current_skill_name)
+                        ]
+                        if use_ocr:
+                            cmd.append("--ocr")
+                        if password:
+                            cmd.extend(["--password", password])
+
+                        import os
+                        run_env = os.environ.copy()
+                        run_env.update(env_config)
+
+                        try:
+                            result = subprocess.run(
+                                cmd,
+                                capture_output=True,
+                                text=True,
+                                check=True,
+                                cwd=WORK_DIR,
+                                env=run_env
+                            )
+                            safe_stdout = mask_content(result.stdout, api_key, api_secret)
+                            safe_stderr = mask_content(result.stderr, api_key, api_secret)
+
+                            results.append({
+                                "name": current_skill_name,
+                                "status": "success",
+                                "output": output_root / current_skill_name
+                            })
+                            st.success(f"✅ {uploaded_file.name} 完成")
+                        except subprocess.CalledProcessError as e:
+                            results.append({
+                                "name": current_skill_name,
+                                "status": "error",
+                                "error": e.stderr
+                            })
+                            st.error(f"❌ {uploaded_file.name} 失败")
+
+                progress_bar.progress(1.0)
+                st.markdown("---")
+
+                if results:
+                    success_count = sum(1 for r in results if r["status"] == "success")
+                    st.success(f"🎉 完成！成功 {success_count}/{len(results)} 个")
+
+                    if success_count > 0:
+                        st.subheader("📥 下载")
+                        cols = st.columns(min(3, success_count))
+                        for i, result in enumerate(results):
+                            if result["status"] == "success":
+                                zf = list(result["output"].glob("*.zip"))
+                                if zf:
+                                    with open(zf[0], "rb") as f:
+                                        with cols[i % 3]:
+                                            st.download_button(
+                                                label=f"📥 {result['name']}",
+                                                data=f,
+                                                file_name=zf[0].name
+                                            )
 
                 st.info(f"📂 文件保存在：{output_root}")
-                st.rerun()
+                
