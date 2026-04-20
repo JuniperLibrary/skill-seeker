@@ -22,8 +22,13 @@
 ## 支持的视频源
 
 1. **本地视频**：MP4, MOV, AVI, MKV, WebM
-2. **YouTube视频**：直接获取字幕
-3. **在线视频URL**：先下载再转写
+2. **在线视频**：
+   - YouTube
+   - Bilibili
+   - Vimeo
+   - 抖音/TikTok
+   - 以及 yt-dlp 支持的 1700+ 网站
+3. **音频文件**：MP3, WAV, M4A, FLAC
 
 ## 实现方案
 
@@ -66,11 +71,11 @@ class VideoProcessor:
             return self._process_url(source)
 ```
 
-### 3. YouTube处理
+### 3. 在线视频处理（yt-dlp）
 
 ```python
-def _process_youtube(self, url: str) -> str:
-    # 使用yt-dlp获取字幕
+def _process_online_video(self, url: str) -> str:
+    # 使用yt-dlp获取字幕，支持1700+网站
     cmd = [
         "yt-dlp",
         "--write-subs",
@@ -84,6 +89,12 @@ def _process_youtube(self, url: str) -> str:
     # 解析SRT为纯文本
     return self._parse_srt("video.en.srt")
 ```
+
+**yt-dlp 支持的热门平台**：
+- YouTube、Bilibili、Vimeo、Twitch
+- 抖音、TikTok、Instagram
+- 优酷、爱奇艺、腾讯视频
+- 等1700+视频网站
 
 ### 4. 本地视频处理
 
