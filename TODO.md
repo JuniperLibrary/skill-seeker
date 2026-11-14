@@ -32,4 +32,4 @@
 - [ ] **版本管理** - 支持Skill版本迭代
 - [ ] **协作功能** - 团队共享模板
 - [ ] **RAG增强** - 增强LangChain/Chroma向量检索和知识库构建
-- [x] **自动Benchmark** - 生成Skill后自动运行基准测试：机器门禁 `verify_skill.py` 8 项（UI 执行后自动跑并逐项展示）+ 深度蒸馏附独立盲考官判卷（EVAL.md）；全量通用基准评估可再深化
+- [x] **自动Benchmark** - `scripts/benchmark_skill.py`：五维度量化基准分（机器门禁 40 / 深度产物 15 / EVAL 题集 15 / 盲考成绩 20 / 溯源抽查 10，≥80 PASS，支持 --json）；UI 历史页"基准分"按钮 + 执行后自动展示；四个真实案例 96.2-100 分全 PASS

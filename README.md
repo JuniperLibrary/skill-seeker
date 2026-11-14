@@ -151,6 +151,11 @@ skill-name/
 python3 scripts/verify_skill.py output/<skill-name>
 # 8 项检查：frontmatter 触发词 / name==目录名 / 无模板同义反复 / ≤120 行 /
 # 无断链引用 / 规则带锚 / 页锚可回查 / 显式边界声明 → ALL PASS
+
+python3 scripts/benchmark_skill.py output/<skill-name> [--json]
+# 五维度量化基准分（0-100，全部机器可判定）：
+#   机器门禁 40（8 项×5）+ 深度产物 15 + EVAL 题集 15 + 盲考成绩 20 + 溯源抽查 10
+#   ≥80 为 PASS；--json 供 CI / UI 调用
 ```
 
 ### 使用方式

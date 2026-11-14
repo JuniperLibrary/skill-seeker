@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import sys
@@ -55,6 +56,38 @@ def show_gate(skill_path: Path, key: str):
         st.error("❌ 机器门禁未过——以下为逐项判定，不要带病交付：")
     st.code(out or "（无输出）", language="text")
     return passed
+
+
+def run_benchmark(skill_path: Path) -> dict | None:
+    """跑 scripts/benchmark_skill.py --json：五维度量化基准分。"""
+    r = subprocess.run(
+        [sys.executable, "scripts/benchmark_skill.py", str(skill_path), "--json"],
+        capture_output=True, text=True, cwd=REPO_ROOT, timeout=120,
+    )
+    try:
+        return json.loads(r.stdout)
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
+def show_benchmark(skill_path: Path):
+    b = run_benchmark(skill_path)
+    if not b:
+        st.warning("基准分计算失败（scripts/benchmark_skill.py 无有效输出）")
+        return
+    cols = st.columns(6)
+    dims = [
+        ("门禁 8 项", f"{b['gates']['passed']}/8"),
+        ("深度产物", f"{b['artifacts']['score']:.0f}/15"),
+        ("题集规模", f"{b['eval_size']['score']:.0f}/15"),
+        ("盲考成绩", f"{b['blind_exam']['score']:.0f}/20"),
+        ("溯源抽查", f"{b['trace']['score']:.0f}/10"),
+    ]
+    for col, (label, value) in zip(cols, dims):
+        col.metric(label, value)
+    total = b["total"]
+    verdict = "✅ PASS" if b["pass"] else "❌ BELOW 80"
+    cols[5].metric("基准总分", f"{total:.0f}/100", verdict)
 
 
 def show_evidence(skill_path: Path):
@@ -180,8 +213,9 @@ with tab_new:
                 if prompt_file:
                     st.success(f"深度题目已生成：{prompt_file}")
                 skill_path = output_root / name
-                st.markdown("#### 第三方证明（自动机器门禁）")
+                st.markdown("#### 第三方证明（自动机器门禁 + 基准分）")
                 show_gate(skill_path, key=f"gate_new_{name}")
+                show_benchmark(skill_path)
                 st.info("下一步建议：在历史证据页查看四阶段产物，并派独立盲考官（禁读原文）按 EVAL 题集判卷。")
         st.divider()
         if history_skills:
@@ -200,17 +234,21 @@ with tab_history:
     for idx, skill in enumerate(history_skills):
         with st.expander(f"📦 {skill['name']}", expanded=(idx == 0)):
             skill_path = skill["path"]
-            c1, c2, c3 = st.columns(3)
+            c1, c2, c3, c4 = st.columns(4)
             with c1:
                 if st.button("✅ 机器门禁复检", key=f"gate_{idx}"):
                     show_gate(skill_path, key=f"gate_run_{idx}")
             with c2:
+                if st.button("📊 基准分", key=f"bench_{idx}",
+                             help="五维度量化基准：门禁/产物/题集/盲考/溯源"):
+                    show_benchmark(skill_path)
+            with c3:
                 if st.button("🔬 深度蒸馏", key=f"deep_{idx}",
                              help="四阶段重做：替换不追加，附证据锚与盲测验证"):
                     prompt_file = deep_enhance_skill(skill["name"])
                     if prompt_file:
                         st.success(f"产出：{prompt_file}")
-            with c3:
+            with c4:
                 if st.button("🔄 重新蒸馏", key=f"rd_{idx}"):
                     st.session_state["redistill_skill"] = skill["name"]
                     st.rerun()
