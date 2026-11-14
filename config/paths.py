@@ -24,3 +24,7 @@ TEMP_DIR = os.environ.get(
     "SKILL_TEMP_DIR",
     "/tmp/skill-seeker"
 )
+
+# 深度蒸馏题目（替代上游默认的"更大"题目，见 prompts/deep_distill.md）
+PROMPTS_DIR = PROJECT_ROOT / "prompts"
+DEEP_DISTILL_PROMPT = PROMPTS_DIR / "deep_distill.md"

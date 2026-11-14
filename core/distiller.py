@@ -5,7 +5,7 @@ import os
 import shutil
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Optional
 
 
 class SkillDistiller:
@@ -78,6 +78,63 @@ class SkillDistiller:
             shutil.rmtree(skill_path)
             return True
         return False
+
+    def deep_enhance(self, skill_name: str, agent_cmd: str = None) -> Optional[Path]:
+        """用深度题目重做蒸馏（替换而不是追加，附验证环节）
+
+        流程：读取该 skill 的原始素材 → 填充深度题目模板 → 生成 PROMPT.md；
+        若提供 agent_cmd（含 {prompt_file} 占位符）则以无头模式调用本地 coding agent 执行。
+
+        示例:
+            distiller.deep_enhance("bondseek-agent-skill")
+            distiller.deep_enhance("bondseek-agent-skill",
+                agent_cmd="claude -p --dangerously-skip-permissions < {prompt_file}")
+        """
+        from config.paths import DEEP_DISTILL_PROMPT
+
+        skill_dir = self.output_root / skill_name
+        if not (skill_dir / "SKILL.md").exists():
+            print(f"❌ 未找到 {skill_dir / 'SKILL.md'}，请先执行 create")
+            return None
+        if not DEEP_DISTILL_PROMPT.exists():
+            print(f"❌ 缺少深度题目模板: {DEEP_DISTILL_PROMPT}")
+            return None
+
+        # 收集原始素材清单（source/ 的 parser 产物 + references/ 现有文件）
+        parts = []
+        for sub in ("source", "references"):
+            d = skill_dir / sub
+            if d.exists():
+                for f in sorted(d.rglob("*.md")):
+                    parts.append(f"{f.relative_to(skill_dir)}（{f.stat().st_size} bytes）")
+        source_files = "\n".join(f"- {p}" for p in parts) or "- （无，请说明缺失维度）"
+
+        prompt_text = DEEP_DISTILL_PROMPT.read_text(encoding="utf-8")
+        prompt_text = (
+            prompt_text.replace("{skill_dir}", str(skill_dir))
+            .replace("{skill_name}", skill_name)
+            .replace("{source_files}", source_files)
+        )
+
+        prompt_file = skill_dir / "PROMPT.md"
+        prompt_file.write_text(prompt_text, encoding="utf-8")
+        print(f"📝 深度题目已生成: {prompt_file}")
+
+        if agent_cmd is None:
+            print("ℹ️ 未指定执行命令。请在 skill 目录用本地 agent 执行该题目，如：")
+            print(f'   cd "{skill_dir}" && claude -p --dangerously-skip-permissions "$(cat PROMPT.md)"')
+            return prompt_file
+
+        import subprocess as sp
+
+        cmd = sp.list2cmdline  # noqa: F841  (占位符说明用途)
+        if "{prompt_file}" in agent_cmd:
+            shell_cmd = agent_cmd.replace("{prompt_file}", str(prompt_file))
+        else:
+            shell_cmd = f'{agent_cmd} "$(cat {prompt_file})"'
+        print(f"🚀 执行: {shell_cmd}")
+        ret = sp.run(shell_cmd, shell=True, cwd=skill_dir)
+        return prompt_file if ret.returncode == 0 else None
 
     def package_for_platform(
         self,

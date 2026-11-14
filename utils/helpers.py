@@ -26,10 +26,14 @@ def mask_content(content: str, api_key: str = None, api_secret: str = None) -> s
 
 
 def generate_skill_name(filename: str) -> str:
-    """从文件名生成Skill名称"""
+    """从文件名生成Skill名称（ASCII安全；非ASCII文件名不再塌缩为纯下划线）"""
     name = Path(filename).stem
-    name = re.sub(r'[^a-zA-Z0-9_-]', '_', name)
-    return name
+    name = re.sub(r'[^a-zA-Z0-9_-]+', '-', name).strip('-_')
+    if not name:
+        # 全中文等无ASCII可保留时，用可读回退名而不是纯下划线
+        from datetime import datetime
+        name = "skill-" + datetime.now().strftime("%Y%m%d-%H%M%S")
+    return name[:64]
 
 
 def format_command(cmd: list) -> str:
